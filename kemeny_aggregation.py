@@ -1,10 +1,5 @@
 #from __future__ import print_function
-from itertools import combinations, permutations
-import random
 
-import numpy as np
-np.set_printoptions(threshold=np.nan)
-import BTL
 
 def build_N(rankings, n, extend=False):
     N = np.zeros((n,n))

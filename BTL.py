@@ -4,7 +4,6 @@ __author__      = "Sumeet Katariya"
 
 import pandas as pd
 import numpy as np
-import random
 from sklearn.linear_model import LogisticRegression
 
 def sklearn_mle(X,y):
