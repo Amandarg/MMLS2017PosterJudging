@@ -1,34 +1,10 @@
 #from __future__ import print_function
-import numpy as np
 from itertools import combinations, permutations
-from lpsolve55 import lpsolve
-from lp_solve import lp_solve
+import random
 
-#input: rank_a[i] (and similarly rank_b) is a vector containing the rank of item
-#i where 1 indicates the best, 2 the second best, and so on. if item i is unranked, set rank_a[i] = -1
-# def kendall_tau_distance(rank_a, rank_b):
-#     KT_distance = 0
-#     num_items = rank_a.shape[0]
-#
-#     for i in range(num_items):
-#         for j in range(i+1, num_items):
-#             #both items have been ranked by both judges
-#             if(rank_a[i] !=-1 and rank_j[] and rank_b[j]!=-1):
-#
-#             #if only one item has been ranked
-#             elif(rank_a[i]!=-1 and rank_b[j]==-1):
-#
-#             #if only one item has been ranked
-#             elif(rank_a[i]==-1 and rank_b[j]]!=-1):
-
-'''
-input is a list of lists, where each sublist is a ranking i.e. if i have 50 items
-something like,  [34, 3, 9, 12]
-
-DONE - From this we will build our N matrix
-build objective <- N
-
-'''
+import numpy as np
+np.set_printoptions(threshold=np.nan)
+import BTL
 
 def build_N(rankings, n, extend=False):
     N = np.zeros((n,n))
@@ -41,7 +17,7 @@ def build_N(rankings, n, extend=False):
 def build_objective(N, extend=False):
     return N.ravel()
 
-def build_constraints(n, solver='lpsolve'):
+def build_constraints(n, solver):
     # constraints for every pair
     idx = lambda i, j: n * i + j
 
@@ -58,92 +34,111 @@ def build_constraints(n, solver='lpsolve'):
 
 
     if solver=='lpsolve':
+
         constraints = np.vstack([pairwise_constraints, triangle_constraints])
         constraint_rhs = np.hstack([np.ones(len(pairwise_constraints)),
                                     np.ones(len(triangle_constraints))])
-        constraint_signs = np.hstack([np.zeros(len(pairwise_constraints)),  # ==
+        constraint_signs = np.hstack([np.zeros(len(pairwise_constraints)),
+                                      np.ones(len(triangle_constraints))])   # ==
         return constraints, constraint_rhs, constraint_signs
-    else solver=='glpk':
+    elif solver=='glpk':
         G = -1*triangle_constraints
         h = -1*np.ones(len(G))
         A = pairwise_constraints
         b = np.ones(len(A))
-        B = set()
-        return G,h,A,b
+        #B = set(range(n**2))
+        #I = set(range(n**2))
+        return G,h,A,b#,B,I
     else:
         raise
 
-# def kendalltau_dist(rank_a, rank_b):
-#     tau = 0
-#     n_candidates = len(rank_a)
-#     for i, j in combinations(range(n_candidates), 2):
-#         tau += (np.sign(rank_a[i] - rank_a[j]) ==
-#                 -np.sign(rank_b[i] - rank_b[j]))
-#     return tau
-#
-# def rankaggr_brute(ranks):
-#     min_dist = np.inf
-#     best_rank = None
-#     n_voters, n_candidates = ranks.shape
-#     for candidate_rank in permutations(range(n_candidates)):
-#         dist = np.sum(kendalltau_dist(candidate_rank, rank) for rank in ranks)
-#         if dist < min_dist:
-#             min_dist = dist
-#             best_rank = candidate_rank
-#     return min_dist, best_rank
-#
-# def _build_graph(ranks):
-#     n_voters, n_candidates = ranks.shape
-#     edge_weights = np.zeros((n_candidates, n_candidates))
-#     for i, j in combinations(range(n_candidates), 2):
-#         preference = ranks[:, i] - ranks[:, j]
-#         h_ij = np.sum(preference < 0)  # prefers i to j
-#         h_ji = np.sum(preference > 0)  # prefers j to i
-#         if h_ij > h_ji:
-#             edge_weights[i, j] = h_ij - h_ji
-#         elif h_ij < h_ji:
-#             edge_weights[j, i] = h_ji - h_ij
-#     return edge_weights
-#
-# def rankaggr_lp(ranks):
-#     """Kemeny-Young optimal rank aggregation"""
-#
-#     n_voters, n_candidates = ranks.shape
-#
-#     # maximize c.T * x
-#     edge_weights = _build_graph(ranks)
-#     c = -1 * edge_weights.ravel()
-#
-#     idx = lambda i, j: n_candidates * i + j
-#
-#                                   np.ones(len(triangle_constraints))])  # >=
-#     np.set_printoptions(threshold=np.nan)
-#     print c
-#     print constraint_signs, n_candidates
-#     obj, x, duals = lp_solve(c, constraints, constraint_rhs, constraint_signs.T)
-#                              #xint=range(1, 1 + n_candidates ** 2))
-#
-#     x = np.array(x).reshape((n_candidates, n_candidates))
-#     aggr_rank = x.sum(axis=1)
-#
-#     return obj, aggr_rank
-# cols = "Alicia Ginny Gwendolyn Robin Debbie".split()
-# ranks = np.array([[0, 1, 2, 3, 4],
-#                   [0, 1, 3, 2, 4],
-#                   [4, 1, 2, 0, 3],
-#                   [4, 1, 0, 2, 3],
-#                   [4, 1, 3, 2, 0]])
-#
-# dist, aggr = rankaggr_brute(ranks)
-# print("BRUTE Kemeny-Young aggregation with score {} is: {}".format(
-# dist,
-# ", ".join(cols[i] for i in np.argsort(aggr))))
-#
-#
-# _, aggr = rankaggr_lp(ranks)
-# score = np.sum(kendalltau_dist(aggr, rank) for rank in ranks)
-# print("LP Kemeny-Young aggregation with score {} is: {}".format(
-#     score,
-#     ", ".join(cols[i] for i in np.argsort(aggr))))
-#
-# print(_build_graph(ranks))
+def kemeny_lpsolve(rankings, n):
+    '''Kemeny rank aggregation'''
+    from lp_solve import lp_solve
+    N = build_N(rankings, n)
+    #lp_solve solves a maximization problem, so need to multiply objective by -1
+    c = -1*build_objective(N)
+    constraints, constraint_rhs, constraint_signs = build_constraints(n, 'lpsolve')
+    obj, x, duals = lp_solve(c, constraints, constraint_rhs, constraint_signs.T)
+                             #xint=range(1, 1 + n_candidates ** 2))
+    x = np.array(x).reshape((n, n))
+    aggr_rank = x.sum(axis=0)
+    print 'lpsolve aggr_rank', np.argsort(aggr_rank)[::-1]
+    return obj, np.argsort(aggr_rank)[::-1], x
+
+def kemeny_glpksolve(rankings,n):
+    from cvxopt import matrix
+    from cvxopt.glpk import ilp
+    #glpk solves a minimization problem
+    N = build_N(rankings, n)
+    c = build_objective(N)
+    G,h,A,b = build_constraints(n, 'glpk')
+    status, x = ilp(c, matrix(G), matrix(h), matrix(A), matrix(b),
+                    set(range(n**2)), set(range(n**2)))
+    x = np.array(x).reshape((n, n))
+    aggr_rank = x.sum(axis=0)
+    print 'glpk aggr_rank', np.argsort(aggr_rank)[::-1]
+    return None, np.argsort(aggr_rank)[::-1], x
+
+def kendalltau_dist(rank, partial):
+    d = 0
+    rank_inv = dict(zip(rank, range(len(rank)) ))
+    for i in range(len(partial)):
+        for j in range(i+1, len(partial)):
+            if rank_inv[partial[i]] > rank_inv[partial[j]]:
+                d+=1
+    return d
+
+def rankaggr_brute(ranks, n):
+    min_dist = np.inf
+    best_rank = None
+    count =0
+    for candidate_rank in permutations(range(n)):
+        if count % 100000 == 0:
+            print 'Candidate ', count
+        count +=1
+        dist = np.sum(kendalltau_dist(candidate_rank, rank) for rank in ranks)
+        if dist < min_dist:
+            min_dist = dist
+            best_rank = candidate_rank
+    print 'min_dist', min_dist
+    print 'brute aggr', best_rank
+    return min_dist, best_rank
+
+def borda_reduction(rankings, n):
+    N = build_N(rankings, n)
+    M = np.zeros((n,n))
+    for i in range(n):
+        for j in range(n):
+            if i!=j:
+                total = N[i,j]+N[j,i]
+                if total == 0:
+                    M[i,j] = 0
+                else:
+                    M[i,j] = N[i,j]*1.0 / total
+    return np.argsort(np.sum(M, axis=1))[::-1]
+
+def sample(rank, k, t):
+    n = len(rank)
+    ranks = []
+    for i in range(t):
+        ranks.append([rank[x] for x in sorted(random.sample(range(n),k))])
+    return ranks
+
+n =6
+tau = range(n); random.shuffle(tau)
+print 'tau', tau
+ranks = sample(tau, 3, 100)
+
+_, aggr, x_lpsolve = kemeny_lpsolve(ranks, n)
+score = np.sum(kendalltau_dist(aggr, rank) for rank in ranks)
+
+aggr = borda_reduction(ranks, n)
+print 'borda aggr', aggr
+
+X,y = BTL.get_X_y(ranks, n)
+x = BTL.sklearn_mle(X,y)
+print 'BTL', np.argsort(x)[::-1]
+
+_, aggr, x_glpk  = kemeny_glpksolve(ranks,n)
+print 'GLPK', aggr
