@@ -35,7 +35,7 @@ def lp_solve(f = None, a = None, b = None, e = None, vlb = None, vub = None, xin
            x: Optimal value of the decision variables.
        duals: solution of the dual problem."""
 
-  if f == None:
+  if f is None:
           help(lp_solve)
           return
 
