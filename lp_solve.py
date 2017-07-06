@@ -41,7 +41,6 @@ def lp_solve(f = None, a = None, b = None, e = None, vlb = None, vub = None, xin
 
   m = len(a)
   n = len(a[0])
-  print 'm,n', m, n
   lp = lpsolve('make_lp', m, n)
   lpsolve('set_verbose', lp, IMPORTANT)
   lpsolve('set_mat', lp, a.tolist())
